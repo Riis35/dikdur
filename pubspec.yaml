@@ -13,7 +13,11 @@ dependencies:
   get: ^4.7.2
   google_fonts: ^6.2.1
   numberpicker: ^2.1.2
-  workmanager: ^0.5.2
+  workmanager:
+    git:
+      url: https://github.com/fluttercommunity/flutter_workmanager.git
+      path: workmanager
+      ref: main
 
 dev_dependencies:
   flutter_test:

@@ -8,11 +8,12 @@ plugins {
 android {
     namespace = "com.example.dikdur"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -37,6 +38,11 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+    dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.0")
+    implementation("androidx.work:work-runtime-ktx:2.8.1") // Güncel WorkManager
+}
 }
 
 flutter {
