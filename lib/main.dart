@@ -8,6 +8,24 @@ import 'package:get/get.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
+
+Future<void> initializeNotifications() async {
+  const AndroidInitializationSettings androidInitSettings =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+
+  final InitializationSettings initSettings =
+      InitializationSettings(android: androidInitSettings);
+
+  await flutterLocalNotificationsPlugin.initialize(initSettings);
+
+  // Android 13+ izin isteme
+  final bool? granted = await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>()?.requestNotificationsPermission();
+
+  print("Bildirim izni verildi mi: $granted");
+}
+
 final TimeController timeController = Get.put(TimeController());
 
 @pragma('vm:entry-point')
@@ -38,7 +56,8 @@ Future<void> _showBigPictureNotification() async {
     importance: Importance.high,
     priority: Priority.high,
     styleInformation: bigPictureStyle,
-    autoCancel: false, // Kullanıcı tıklayarak kapatamasın
+    autoCancel: true, // Kullanıcı tıklayarak kapatamasın
+    
   );
 
   NotificationDetails platformChannelSpecifics =
@@ -46,14 +65,14 @@ Future<void> _showBigPictureNotification() async {
 
   await flutterLocalNotificationsPlugin.show(
     0,
-    'Hatırlatma',
-    'Zamanınız doldu!',
+    'DİK DUR!',
+    'SAĞLIK İÇİN DİK DUR!',
     platformChannelSpecifics,
   );
 }
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
-  
+  await initializeNotifications();
   // WorkManager başlatma
   Workmanager().initialize(
     callbackDispatcher,
@@ -68,7 +87,10 @@ void main() async{
       InitializationSettings(android: initializationSettingsAndroid);
   
     await flutterLocalNotificationsPlugin.initialize(
-    initializationSettings
+    initializationSettings,
+    onDidReceiveNotificationResponse: (details) {
+    // Boş bırakıyoruz
+  },
   );
   runApp(const MainApp());
 }
@@ -121,14 +143,17 @@ class MainApp extends StatelessWidget {
                     ),
                     SizedBox(height: size.height * 0.05),
                     TextButton(onPressed:() => {
+                    //print(timeController.currentValue*60),
+                    _showBigPictureNotification(),
+                    /*
                       Workmanager().registerPeriodicTask(
                     "big_picture_task",
                     "bigPictureNotification",
-                    frequency: Duration(minutes: globals.Globals().dateTime),
+                    frequency: Duration(minutes: 15),
                     constraints: Constraints(
                       networkType: NetworkType.connected,
                     ),
-                  )
+                  )*/
                     }, child: Container(
                       width: size.width * 0.3,
                       height: size.height * 0.05,
@@ -150,12 +175,14 @@ class MainApp extends StatelessWidget {
   Widget timeSelector() {
   return Column(
       children: <Widget>[
-        NumberPicker(
+         Obx(() => NumberPicker(
           value: timeController.currentValue,
           minValue: 1,
           maxValue: 24,
           onChanged: (value) => timeController.setTime(value),
-        ),
+          textStyle: GoogleFonts.montserrat(color: Colors.orange[800], fontWeight: FontWeight.w600, fontSize: 22),
+          selectedTextStyle: GoogleFonts.montserrat(color: Colors.orange[400], fontWeight: FontWeight.w600, fontSize: 22),
+        )),
       ],
     );
   }
