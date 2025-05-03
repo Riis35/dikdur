@@ -1,10 +1,15 @@
+import 'dart:io';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'globals.dart' as globals;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:numberpicker/numberpicker.dart';
 import 'package:get/get.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -37,14 +42,38 @@ void callbackDispatcher() {
 }
 
 Future<void> _showBigPictureNotification() async {
-  const String largeIconPath = 'app_icon'; // drawable'daki icon (Android için)
-  const String bigPicturePath = 'notification_bg'; // drawable'daki büyük resim
+  //const String largeIconPath = 'app_icon'; // drawable'daki icon (Android için)
+  //const String bigPicturePath = 'notification_bg'; // drawable'daki büyük resim
+
+  // 1. Text dosyasını oku ve satırları al
+  final String textData = await rootBundle.loadString('assets/texts.txt');
+  final List<String> textLines =
+      textData.split('\n').where((line) => line.trim().isNotEmpty).toList();
+  final randomText = textLines[Random().nextInt(textLines.length)];
+
+  // 2. Görseli seç
+  final imageNames = [
+    '1.jpg',
+    '2.jpg',
+    '3.jpg',
+  ];
+  final randomImage = imageNames[Random().nextInt(imageNames.length)];
+  final String imageAssetPath = 'assets/imgs/$randomImage';
+
+  // 3. Byte olarak oku ve geçici dosyaya yaz
+  final ByteData bytes = await rootBundle.load(imageAssetPath);
+  final Uint8List list = bytes.buffer.asUint8List();
+
+  final tempDir = await getTemporaryDirectory();
+  final File tempFile = File('${tempDir.path}/$randomImage');
+  await tempFile.writeAsBytes(list);
+
+
 
   final BigPictureStyleInformation bigPictureStyle = BigPictureStyleInformation(
-    DrawableResourceAndroidBitmap(bigPicturePath),
-    largeIcon: DrawableResourceAndroidBitmap(largeIconPath),
+    FilePathAndroidBitmap(tempFile.path),
     contentTitle: 'DİK DUR!',
-    summaryText: 'BELİN YAMUK KALACAK KARDEŞ DİK DUR!',
+    summaryText: randomText,
     htmlFormatContentTitle: true,
   );
 
@@ -66,7 +95,7 @@ Future<void> _showBigPictureNotification() async {
   await flutterLocalNotificationsPlugin.show(
     0,
     'DİK DUR!',
-    'SAĞLIK İÇİN DİK DUR!',
+    randomText,
     platformChannelSpecifics,
   );
 }
@@ -85,11 +114,10 @@ void main() async{
   
   final InitializationSettings initializationSettings =
       InitializationSettings(android: initializationSettingsAndroid);
-  
     await flutterLocalNotificationsPlugin.initialize(
     initializationSettings,
     onDidReceiveNotificationResponse: (details) {
-    // Boş bırakıyoruz
+    
   },
   );
   runApp(const MainApp());
@@ -142,19 +170,34 @@ class MainApp extends StatelessWidget {
                           ),
                     ),
                     SizedBox(height: size.height * 0.05),
-                    TextButton(onPressed:() => {
+                    TextButton(onPressed:() {
                     //print(timeController.currentValue*60),
-                    _showBigPictureNotification(),
-                    /*
-                      Workmanager().registerPeriodicTask(
-                    "big_picture_task",
-                    "bigPictureNotification",
-                    frequency: Duration(minutes: 15),
-                    constraints: Constraints(
-                      networkType: NetworkType.connected,
-                    ),
-                  )*/
-                    }, child: Container(
+                    //_showBigPictureNotification();
+                    
+                     try {
+                          Workmanager().registerPeriodicTask(
+                            "big_picture_task",
+                            "bigPictureNotification",
+                            frequency: Duration(minutes: 15),
+                            constraints: Constraints(
+                              networkType: NetworkType.connected,
+                            ),
+                          );
+                          Fluttertoast.showToast(
+                          msg: "Bildirimler başarıyla ayarlandı!",
+                          toastLength: Toast.LENGTH_SHORT,
+                          gravity: ToastGravity.BOTTOM,
+                        );
+                        } catch (e) {
+                           Fluttertoast.showToast(
+                            msg: "Hata: $e",
+                            toastLength: Toast.LENGTH_LONG,
+                            gravity: ToastGravity.BOTTOM,
+                            backgroundColor: Colors.red,
+                          );
+                        }
+                      },
+                      child: Container(
                       width: size.width * 0.3,
                       height: size.height * 0.05,
                       decoration: BoxDecoration(
@@ -162,6 +205,18 @@ class MainApp extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Center(child: Text("Kaydet", style: GoogleFonts.montserrat(color: Colors.white, fontWeight: FontWeight.w800),)))),
+                      TextButton(onPressed:() => {
+                    //print(timeController.currentValue*60),
+                    //_showBigPictureNotification(),
+                    stopReminder(),
+                    }, child: Container(
+                      width: size.width * 0.3,
+                      height: size.height * 0.05,
+                      decoration: BoxDecoration(
+                        color: Colors.orange[500],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Center(child: Text("Durdur", style: GoogleFonts.montserrat(color: Colors.white, fontWeight: FontWeight.w800),))))
                   ],
                 ),
 
@@ -186,6 +241,10 @@ class MainApp extends StatelessWidget {
       ],
     );
   }
+
+  void stopReminder() {
+  Workmanager().cancelByUniqueName("big_picture_task");
+}
 }
 class TimeController extends GetxController {
   var pickervalue = 1.obs;
